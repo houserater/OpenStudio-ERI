@@ -295,7 +295,6 @@ class EnergyPlusValidator
         'HeatingSystemType[ElectricResistance | Furnace | WallFurnace | Boiler | Stove | PortableHeater]' => one, # See [HeatingType=Resistance] or [HeatingType=Furnace] or [HeatingType=WallFurnace] or [HeatingType=Boiler] or [HeatingType=Stove] or [HeatingType=PortableHeater]
         'HeatingCapacity' => one, # Use -1 for autosizing
         'FractionHeatLoadServed' => one, # Must sum to <= 1 across all HeatingSystems and HeatPumps
-        'ElectricAuxiliaryEnergy' => zero_or_one, # If not provided, uses 301 defaults for fuel furnace/boiler and zero otherwise
       },
 
       ## [HeatingType=Resistance]
@@ -326,6 +325,7 @@ class EnergyPlusValidator
         'DistributionSystem' => one,
         'HeatingSystemFuel[text()="natural gas" or text()="fuel oil" or text()="propane" or text()="electricity" or text()="wood"]' => one, # See [HeatingType=FuelEquipment] if not electricity
         'AnnualHeatingEfficiency[Units="AFUE"]/Value' => one,
+        'ElectricAuxiliaryEnergy' => zero_or_one, # If not provided, uses 301 defaults for fuel furnace/boiler and zero otherwise
       },
 
       ## [HeatingType=Stove]
