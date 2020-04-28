@@ -1097,6 +1097,8 @@ class EnergyRatingIndex301Ruleset
   def self.set_systems_hvac_reference(orig_hpxml, new_hpxml)
     # Table 4.2.2(1) - Heating systems
     # Table 4.2.2(1) - Cooling systems
+    
+    hvac_grade = 3
 
     ref_hvacdist_ids = []
 
@@ -1112,26 +1114,26 @@ class EnergyRatingIndex301Ruleset
       if orig_heating_system.heating_system_type == HPXML::HVACTypeBoiler
         add_reference_heating_gas_boiler(new_hpxml, ref_hvacdist_ids, orig_heating_system.fraction_heat_load_served, orig_heating_system)
       else
-        add_reference_heating_gas_furnace(new_hpxml, ref_hvacdist_ids, orig_heating_system.fraction_heat_load_served, orig_heating_system)
+        add_reference_heating_gas_furnace(new_hpxml, ref_hvacdist_ids, orig_heating_system.fraction_heat_load_served, hvac_grade, orig_heating_system)
       end
     end
     if has_fuel && (sum_frac_heat_load < 0.99) # Accommodate systems that don't quite sum to 1 due to rounding
-      add_reference_heating_gas_furnace(new_hpxml, ref_hvacdist_ids, (1.0 - sum_frac_heat_load).round(3))
+      add_reference_heating_gas_furnace(new_hpxml, ref_hvacdist_ids, (1.0 - sum_frac_heat_load).round(3), hvac_grade)
     end
 
     # Cooling
     orig_hpxml.cooling_systems.each do |orig_cooling_system|
       next unless orig_cooling_system.fraction_cool_load_served > 0
 
-      add_reference_cooling_air_conditioner(new_hpxml, ref_hvacdist_ids, orig_cooling_system.fraction_cool_load_served, orig_cooling_system)
+      add_reference_cooling_air_conditioner(new_hpxml, ref_hvacdist_ids, orig_cooling_system.fraction_cool_load_served, hvac_grade, orig_cooling_system)
     end
     orig_hpxml.heat_pumps.each do |orig_heat_pump|
       next unless orig_heat_pump.fraction_cool_load_served > 0
 
-      add_reference_cooling_air_conditioner(new_hpxml, ref_hvacdist_ids, orig_heat_pump.fraction_cool_load_served, orig_heat_pump)
+      add_reference_cooling_air_conditioner(new_hpxml, ref_hvacdist_ids, orig_heat_pump.fraction_cool_load_served, hvac_grade, orig_heat_pump)
     end
     if (sum_frac_cool_load < 0.99) # Accommodate systems that don't quite sum to 1 due to rounding
-      add_reference_cooling_air_conditioner(new_hpxml, ref_hvacdist_ids, (1.0 - sum_frac_cool_load).round(3))
+      add_reference_cooling_air_conditioner(new_hpxml, ref_hvacdist_ids, (1.0 - sum_frac_cool_load).round(3), hvac_grade)
     end
 
     # HeatPump
@@ -1139,15 +1141,15 @@ class EnergyRatingIndex301Ruleset
       next unless orig_heating_system.fraction_heat_load_served > 0
       next unless orig_heating_system.heating_system_fuel == HPXML::FuelTypeElectricity
 
-      add_reference_heating_heat_pump(new_hpxml, ref_hvacdist_ids, orig_heating_system.fraction_heat_load_served, orig_heating_system)
+      add_reference_heating_heat_pump(new_hpxml, ref_hvacdist_ids, orig_heating_system.fraction_heat_load_served, hvac_grade, orig_heating_system)
     end
     orig_hpxml.heat_pumps.each do |orig_heat_pump|
       next unless orig_heat_pump.fraction_heat_load_served > 0
 
-      add_reference_heating_heat_pump(new_hpxml, ref_hvacdist_ids, orig_heat_pump.fraction_heat_load_served, orig_heat_pump)
+      add_reference_heating_heat_pump(new_hpxml, ref_hvacdist_ids, orig_heat_pump.fraction_heat_load_served, hvac_grade, orig_heat_pump)
     end
     if (not has_fuel) && (sum_frac_heat_load < 0.99) # Accommodate systems that don't quite sum to 1 due to rounding
-      add_reference_heating_heat_pump(new_hpxml, ref_hvacdist_ids, (1.0 - sum_frac_heat_load).round(3))
+      add_reference_heating_heat_pump(new_hpxml, ref_hvacdist_ids, (1.0 - sum_frac_heat_load).round(3), hvac_grade)
     end
 
     # Table 303.4.1(1) - Thermostat
@@ -1170,6 +1172,8 @@ class EnergyRatingIndex301Ruleset
   def self.set_systems_hvac_rated(orig_hpxml, new_hpxml)
     # Table 4.2.2(1) - Heating systems
     # Table 4.2.2(1) - Cooling systems
+    
+    hvac_grade = 3
 
     ref_hvacdist_ids = []
 
@@ -1187,11 +1191,12 @@ class EnergyRatingIndex301Ruleset
                                     heating_efficiency_afue: orig_heating_system.heating_efficiency_afue,
                                     heating_efficiency_percent: orig_heating_system.heating_efficiency_percent,
                                     fraction_heat_load_served: orig_heating_system.fraction_heat_load_served,
-                                    electric_auxiliary_energy: orig_heating_system.electric_auxiliary_energy)
+                                    electric_auxiliary_energy: orig_heating_system.electric_auxiliary_energy,
+                                    blower_watt_cfm: get_blower_watt_cfm(hvac_grade))
     end
     # Add reference heating system for residual load
     if has_fuel && (sum_frac_heat_load < 0.99) # Accommodate systems that don't quite sum to 1 due to rounding
-      add_reference_heating_gas_furnace(new_hpxml, ref_hvacdist_ids, (1.0 - sum_frac_heat_load).round(3))
+      add_reference_heating_gas_furnace(new_hpxml, ref_hvacdist_ids, (1.0 - sum_frac_heat_load).round(3), hvac_grade)
     end
 
     # Retain cooling system(s)
@@ -1205,11 +1210,14 @@ class EnergyRatingIndex301Ruleset
                                     fraction_cool_load_served: orig_cooling_system.fraction_cool_load_served,
                                     cooling_efficiency_seer: orig_cooling_system.cooling_efficiency_seer,
                                     cooling_efficiency_eer: orig_cooling_system.cooling_efficiency_eer,
-                                    cooling_shr: orig_cooling_system.cooling_shr)
+                                    cooling_shr: orig_cooling_system.cooling_shr,
+                                    airflow_defect_ratio: get_airflow_defect_ratio(hvac_grade),
+                                    charge_defect_ratio: get_charge_defect_ratio(hvac_grade),
+                                    blower_watt_cfm: get_blower_watt_cfm(hvac_grade))
     end
     # Add reference cooling system for residual load
     if (sum_frac_cool_load < 0.99) # Accommodate systems that don't quite sum to 1 due to rounding
-      add_reference_cooling_air_conditioner(new_hpxml, ref_hvacdist_ids, (1.0 - sum_frac_cool_load).round(3))
+      add_reference_cooling_air_conditioner(new_hpxml, ref_hvacdist_ids, (1.0 - sum_frac_cool_load).round(3), hvac_grade)
     end
 
     # Retain heat pump(s)
@@ -1233,11 +1241,14 @@ class EnergyRatingIndex301Ruleset
                                cooling_efficiency_seer: orig_heat_pump.cooling_efficiency_seer,
                                cooling_efficiency_eer: orig_heat_pump.cooling_efficiency_eer,
                                heating_efficiency_hspf: orig_heat_pump.heating_efficiency_hspf,
-                               heating_efficiency_cop: orig_heat_pump.heating_efficiency_cop)
+                               heating_efficiency_cop: orig_heat_pump.heating_efficiency_cop,
+                               airflow_defect_ratio: get_airflow_defect_ratio(hvac_grade),
+                               charge_defect_ratio: get_charge_defect_ratio(hvac_grade),
+                               blower_watt_cfm: get_blower_watt_cfm(hvac_grade))
     end
     # Add reference heat pump for residual load
     if (not has_fuel) && (sum_frac_heat_load < 0.99) # Accommodate systems that don't quite sum to 1 due to rounding
-      add_reference_heating_heat_pump(new_hpxml, ref_hvacdist_ids, (1.0 - sum_frac_heat_load).round(3))
+      add_reference_heating_heat_pump(new_hpxml, ref_hvacdist_ids, (1.0 - sum_frac_heat_load).round(3), hvac_grade)
     end
 
     # Table 303.4.1(1) - Thermostat
@@ -2164,7 +2175,7 @@ class EnergyRatingIndex301Ruleset
     return [q_fan, 0].max
   end
 
-  def self.add_reference_heating_gas_furnace(new_hpxml, ref_hvacdist_ids, load_frac, orig_system = nil)
+  def self.add_reference_heating_gas_furnace(new_hpxml, ref_hvacdist_ids, load_frac, hvac_grade, orig_system = nil)
     # 78% AFUE gas furnace
     seed_id = nil
     if not orig_system.nil?
@@ -2182,7 +2193,8 @@ class EnergyRatingIndex301Ruleset
                                   heating_capacity: -1, # Use Manual J auto-sizing
                                   heating_efficiency_afue: 0.78,
                                   fraction_heat_load_served: load_frac,
-                                  seed_id: seed_id)
+                                  seed_id: seed_id,
+                                  blower_watt_cfm: get_blower_watt_cfm(hvac_grade))
   end
 
   def self.add_reference_heating_gas_boiler(new_hpxml, ref_hvacdist_ids, load_frac, orig_system = nil)
@@ -2206,7 +2218,7 @@ class EnergyRatingIndex301Ruleset
                                   seed_id: seed_id)
   end
 
-  def self.add_reference_heating_heat_pump(new_hpxml, ref_hvacdist_ids, load_frac, orig_system = nil)
+  def self.add_reference_heating_heat_pump(new_hpxml, ref_hvacdist_ids, load_frac, hvac_grade, orig_system = nil)
     # 7.7 HSPF air source heat pump
     seed_id = nil
     if not orig_system.nil?
@@ -2256,10 +2268,13 @@ class EnergyRatingIndex301Ruleset
                              fraction_cool_load_served: 0.0,
                              cooling_efficiency_seer: 13.0, # Arbitrary, not used
                              heating_efficiency_hspf: 7.7,
-                             seed_id: seed_id)
+                             seed_id: seed_id,
+                             airflow_defect_ratio: get_airflow_defect_ratio(hvac_grade),
+                             charge_defect_ratio: get_charge_defect_ratio(hvac_grade),
+                             blower_watt_cfm: get_blower_watt_cfm(hvac_grade))
   end
 
-  def self.add_reference_cooling_air_conditioner(new_hpxml, ref_hvacdist_ids, load_frac, orig_system = nil)
+  def self.add_reference_cooling_air_conditioner(new_hpxml, ref_hvacdist_ids, load_frac, hvac_grade, orig_system = nil)
     # 13 SEER electric air conditioner
     seed_id = nil
     shr = nil
@@ -2281,7 +2296,10 @@ class EnergyRatingIndex301Ruleset
                                   fraction_cool_load_served: load_frac,
                                   cooling_efficiency_seer: 13.0,
                                   cooling_shr: shr,
-                                  seed_id: seed_id)
+                                  seed_id: seed_id,
+                                  airflow_defect_ratio: get_airflow_defect_ratio(hvac_grade),
+                                  charge_defect_ratio: get_charge_defect_ratio(hvac_grade),
+                                  blower_watt_cfm: get_blower_watt_cfm(hvac_grade))
   end
 
   def self.add_reference_distribution_system(new_hpxml, ref_hvacdist_ids)
@@ -2414,6 +2432,33 @@ class EnergyRatingIndex301Ruleset
     elsif ['7', '8'].include? @iecc_zone
       return 0.057
     end
+  end
+
+  def self.get_airflow_defect_ratio(grade)
+    if grade == 1
+      return 0.0
+    elsif grade == 3
+      return -0.25
+    end
+    fail "Unexpected grade: #{grade}."
+  end
+
+  def self.get_charge_defect_ratio(grade)
+    if grade == 1
+      return 0.0
+    elsif grade == 3
+      return -0.25
+    end
+    fail "Unexpected grade: #{grade}."
+  end
+
+  def self.get_blower_watt_cfm(grade)
+    if grade == 1
+      return 0.45
+    elsif grade == 3
+      return 0.58
+    end
+    fail "Unexpected grade: #{grade}."
   end
 end
 
