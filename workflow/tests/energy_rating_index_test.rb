@@ -235,6 +235,41 @@ class EnergyRatingIndexTest < Minitest::Test
     end
   end
 
+  def test_resnet_std_310
+    test_name = 'RESNET_Std310_Install_Qual'
+    test_results_csv = File.absolute_path(File.join(@test_results_dir, "#{test_name}.csv"))
+    File.delete(test_results_csv) if File.exist? test_results_csv
+
+    # Run simulations
+    all_results = {}
+    xmldir = File.join(File.dirname(__FILE__), 'RESNET_Tests/Other_Std310_Install_Qual')
+    Dir["#{xmldir}/*.xml"].sort.each do |xml|      
+      hpxmls, csvs, runtime = run_eri(xml, test_name)
+      all_results[xml] = _get_csv_results(csvs[:results])
+    end
+    assert(all_results.size > 0)
+
+    # Write results to csv
+    keys = all_results.values[0].keys
+    CSV.open(test_results_csv, 'w') do |csv|
+      csv << ['Test Case'] + keys
+      all_results.each_with_index do |(xml, results), i|
+        csv_line = [File.basename(xml)]
+        keys.each do |key|
+          csv_line << results[key]
+        end
+        csv << csv_line
+      end
+    end
+    puts "Wrote results to #{test_results_csv}."
+
+    # Check results
+    # all_results.each do |xml, results|
+    #   test_num = File.basename(xml).gsub('L100A-', '').gsub('.xml', '').to_i
+    #   _check_method_results(results, test_num, test_num == 2, true)
+    # end
+  end
+
   def test_resnet_hers_method
     test_name = 'RESNET_Test_4.3_HERS_Method'
     test_results_csv = File.absolute_path(File.join(@test_results_dir, "#{test_name}.csv"))
