@@ -1098,7 +1098,7 @@ class EnergyRatingIndex301Ruleset
     # Table 4.2.2(1) - Heating systems
     # Table 4.2.2(1) - Cooling systems
     
-    hvac_grade = 3
+    hvac_grade = 1
 
     ref_hvacdist_ids = []
 
